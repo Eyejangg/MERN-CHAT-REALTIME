@@ -2,6 +2,8 @@ const UserModel = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const secret = process.env.SECRET;
+const cloudinary = require("../configs/cloudinary");
+
 require("dotenv").config();
 
 
@@ -39,7 +41,7 @@ exports.register = async (req, res) => {
             const secret = process.env.SECRET;
             const node_mode = process.env.node_mode;
             const token = jwt.sign({ userId: user._id }, secret, { expiresIn: "1d" });
-            res.cookie("token", token, {
+            res.cookie("jwt", token, {
                 httpOnly: true, // XSS ATTACK
                 secure: node_mode !== "development",
                 sameSite: "strict",
@@ -79,7 +81,7 @@ exports.login = async (req, res) => {
         }
 
         // login Successfully
-        jwt.sign({ email, id: userDoc._id }, secret, {}, (err, token) => {
+        jwt.sign({ email, userId: userDoc._id }, secret, {}, (err, token) => {
             if (err) {
                 return res.status(500).send({
                     message: "Internal server error : Authentication Failed",
@@ -87,9 +89,10 @@ exports.login = async (req, res) => {
                 });
             }
 
+
             // Set Cookie
             const node_mode = process.env.node_mode;
-            res.cookie("token", token, {
+            res.cookie("jwt", token, {
                 httpOnly: true, // XSS ATTACK
                 secure: node_mode !== "development",
                 sameSite: "strict",
@@ -99,7 +102,7 @@ exports.login = async (req, res) => {
             // token generation
             res.send({
                 message: "Email User Login Succesfully",
-                id: userDoc._id,
+                userId: userDoc._id,
                 email: userDoc.email,
                 accessToken: token,
             });
@@ -111,4 +114,89 @@ exports.login = async (req, res) => {
         })
     }
 
+};
+
+exports.logout = async (req, res) => {
+    try {
+        res.cookie("jwt", "", { maxAge: 0 });
+        res.send({ message: "Logout successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal server error while logging out" });
+    }
+
+};
+
+exports.updateProfile = async (req, res) => {
+    try {
+        const { fullname, profilePicture } = req.body;
+        const UserId = req.user._id;
+
+        // Note: The schema field is 'fullname', but variable is 'fullname'
+        // The schema field for picture is 'profilePicture' (based on user's code)
+
+        if (fullname && profilePicture) {
+            //upload picture to cloudinary
+            const uploadResponse = await cloudinary.uploader.upload(profilePicture);
+            if (!uploadResponse) {
+                return res.status(500).json({ message: "Error while uploading profile picture" });
+            }
+            const updatedUser = await UserModel.findByIdAndUpdate(
+                UserId,
+                {
+                    fullname: fullname,
+                    profilePicture: uploadResponse.secure_url,
+                },
+                { new: true },
+            );
+            if (!updatedUser) {
+                return res.status(500).json({ message: "Error While Update User Profile" });
+            }
+            res.status(200).json({ message: "User Profile Updated Successfully!", user: updatedUser });
+        } else if (profilePicture) {
+            const uploadResponse = await cloudinary.uploader.upload(profilePicture);
+            if (!uploadResponse) {
+                return res.status(500).json({ message: "Error while uploading profile picture" });
+            }
+            const updatedUser = await UserModel.findByIdAndUpdate(
+                UserId,
+                {
+                    profilePicture: uploadResponse.secure_url,
+                },
+                { new: true },
+            );
+            if (!updatedUser) {
+                return res.status(500).json({ message: "Error While Update User Profile" });
+            }
+            res.status(200).json({ message: "User Profile Updated Successfully!", user: updatedUser });
+        } else if (fullname) {
+            const updatedUser = await UserModel.findByIdAndUpdate(
+                UserId,
+                {
+                    fullname: fullname,
+                },
+                { new: true },
+            );
+            if (!updatedUser) {
+                return res.status(500).json({ message: "Error While Update User Profile" });
+            }
+            res.status(200).json({ message: "User Profile Updated Successfully!", user: updatedUser });
+        } else {
+            res.status(200).json({ message: "Nothing is updated" });
+        }
+
+    } catch (error) {
+        console.error("Error in updateProfile:", error);
+        res.status(500).json({ message: "Internal Server Error While Updating User Profile", error: error.message });
+    }
+};
+
+exports.checkAuth = (req, res) => {
+    try {
+        res.status(200).json(req.user);
+    } catch (error) {
+        console.error("Error in checkAuth:", error.message);
+        res.status(500).json({
+            message: "Internal Server Error while checking authentication"
+        });
+    }
 };
