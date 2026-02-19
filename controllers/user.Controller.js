@@ -150,6 +150,7 @@ exports.updateProfile = async (req, res) => {
             );
             if (!updatedUser) {
                 return res.status(500).json({ message: "Error While Update User Profile" });
+
             }
             res.status(200).json({ message: "User Profile Updated Successfully!", user: updatedUser });
         } else if (profilePicture) {
@@ -166,6 +167,7 @@ exports.updateProfile = async (req, res) => {
             );
             if (!updatedUser) {
                 return res.status(500).json({ message: "Error While Update User Profile" });
+
             }
             res.status(200).json({ message: "User Profile Updated Successfully!", user: updatedUser });
         } else if (fullname) {
@@ -179,7 +181,10 @@ exports.updateProfile = async (req, res) => {
             if (!updatedUser) {
                 return res.status(500).json({ message: "Error While Update User Profile" });
             }
-            res.status(200).json({ message: "User Profile Updated Successfully!", user: updatedUser });
+            res.status(200).json({
+                message: "User Profile Updated Successfully!",
+                user: updatedUser,
+            });
         } else {
             res.status(200).json({ message: "Nothing is updated" });
         }

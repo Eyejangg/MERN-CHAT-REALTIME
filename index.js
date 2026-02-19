@@ -12,6 +12,15 @@ const PORT = process.env.PORT
 const BASE_URL = process.env.BASE_URL
 const MONGO_URI = process.env.MONGO_URI
 
+app.use(
+    cors({
+        origin: [BASE_URL, "http://localhost:5173"],
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization", "x-access-token"],
+        credentials: true,
+    })
+);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
@@ -22,15 +31,6 @@ app.use("/api/v1/user", userRouter);
 
 
 
-
-app.use(
-    cors({
-        origin: [BASE_URL],
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allowedHeaders: ["Content-Type", "Authorization", "x-access-token"],
-        credentials: true, // หาคุกกี้ให้เจอ
-    })
-)
 
 app.get("/", (req, res) => {
     res.send("Client is running MERN-CHAT API ");
